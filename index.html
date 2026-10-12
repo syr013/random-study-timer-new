@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>랜덤 공부 타이머</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 30px 16px;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: #f1f5f2;
+      color: #344b40;
+    }
+
+    .container {
+      max-width: 400px;
+      margin: 20px auto;
+      padding: 30px 22px;
+      background: white;
+      border-radius: 24px;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.06);
+    }
+
+    h1 {
+      font-size: 26px;
+      margin-bottom: 12px;
+    }
+
+    .description {
+      color: #718078;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .timer-label {
+      margin-top: 30px;
+      font-size: 16px;
+    }
+
+    #timer {
+      margin: 15px 0 25px;
+      font-size: 54px;
+      font-weight: bold;
+      color: #52796f;
+      font-variant-numeric: tabular-nums;
+    }
+
+    button {
+      display: block;
+      width: 100%;
+      min-height: 50px;
+      margin: 10px 0;
+      padding: 13px;
+      border: none;
+      border-radius: 12px;
+      background: #52796f;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    #pauseButton {
+      background: #d49b45;
+    }
+
+    #resumeButton {
+      background: #52796f;
+    }
+
+    #resetButton {
+      background: #85928a;
+    }
+
+    #message {
+      min-height: 45px;
+      margin-top: 22px;
+      font-size: 14px;
+      line-height: 1.7;
+      color: #607268;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="container">
+    <h1>🌱 랜덤 공부 타이머</h1>
+
+    <p class="description">
+      오늘의 공부 시간을 뽑고<br>
+      나만의 속도로 집중해 보세요!
+    </p>
+
+    <p class="timer-label">오늘의 공부 시간</p>
+
+    <div id="timer">--:--</div>
+
+    <button id="drawButton">🎲 랜덤 시간 뽑기</button>
+    <button id="startButton" disabled>▶️ 공부 시작</button>
+    <button id="pauseButton" disabled>⏸️ 일시 정지</button>
+    <button id="resumeButton" disabled>▶️ 이어 하기</button>
+    <button id="resetButton" disabled>🔄 초기화</button>
+
+    <p id="message" aria-live="polite">
+      랜덤 시간 뽑기를 눌러 시작하세요!
+    </p>
+  </main>
+
+  <script>
+    // 타이머 상태
+    let remainingSeconds = 0;
+    let endTime = 0;
+    let intervalId = null;
+
+    let isSelected = false;
+    let isPaused = false;
+    let isFinished = false;
+
+    // HTML 요소
+    const timerDisplay = document.getElementById("timer");
+    const drawButton = document.getElementById("drawButton");
+    const startButton = document.getElementById("startButton");
+    const pauseButton = document.getElementById("pauseButton");
+    const resumeButton = document.getElementById("resumeButton");
+    const resetButton = document.getElementById("resetButton");
+    const message = document.getElementById("message");
+
+    // 시간 표시
+    function displayTime(seconds) {
+      const minutes = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+
+      timerDisplay.textContent =
+        String(minutes).padStart(2, "0") + ":" +
+        String(secs).padStart(2, "0");
+    }
+
+    // 버튼 상태 관리
+    function updateButtons() {
+      const isRunning = intervalId !== null;
+
+      drawButton.disabled = isRunning;
+
+      startButton.disabled =
+        !isSelected || isRunning || isPaused || isFinished;
+
+      pauseButton.disabled = !isRunning;
+
+      resumeButton.disabled =
+        !isSelected || !isPaused || isRunning || isFinished;
+
+      resetButton.disabled = !isSelected;
+    }
+
+    // 타이머 정지
+    function stopTimer() {
+      if (intervalId !== null) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    }
+
+    // 타이머 종료
+    function finishTimer() {
+      stopTimer();
+
+      remainingSeconds = 0;
+      isSelected = false;
+      isPaused = false;
+      isFinished = true;
+
+      displayTime(0);
+
+      message.textContent =
+        "🎉 공부 시간 완료! 오늘도 수고했어요!";
+
+      updateButtons();
+    }
+
+    // 남은 시간 업데이트
+    function updateTimer() {
+      remainingSeconds = Math.max(
+        0,
+        Math.ceil((endTime - Date.now()) / 1000)
+      );
+
+      displayTime(remainingSeconds);
+
+      if (remainingSeconds <= 0) {
+        finishTimer();
+      }
+    }
+
+    // 타이머 시작
+    function startTimer() {
+      if (
+        !isSelected ||
+        isPaused ||
+        isFinished ||
+        remainingSeconds <= 0 ||
+        intervalId !== null
+      ) {
+        return;
+      }
+
+      endTime = Date.now() + remainingSeconds * 1000;
+
+      message.textContent = "🌿 공부에 집중해 보세요!";
+
+      intervalId = setInterval(updateTimer, 250);
+
+      updateButtons();
+      updateTimer();
+    }
+
+    // 랜덤 시간 뽑기
+    drawButton.addEventListener("click", function () {
+      if (intervalId !== null) {
+        return;
+      }
+
+      const minutes = Math.floor(Math.random() * 31) + 60;
+
+      remainingSeconds = minutes * 60;
+
+      isSelected = true;
+      isPaused = false;
+      isFinished = false;
+
+      displayTime(remainingSeconds);
+
+      message.textContent =
+        `오늘의 공부 시간은 ${minutes}분이에요! 공부 시작을 눌러 보세요.`;
+
+      updateButtons();
+    });
+
+    // 공부 시작
+    startButton.addEventListener("click", function () {
+      if (!isSelected || isPaused || isFinished) {
+        return;
+      }
+
+      startTimer();
+    });
+
+    // 일시 정지
+    pauseButton.addEventListener("click", function () {
+      if (intervalId === null) {
+        return;
+      }
+
+      remainingSeconds = Math.max(
+        0,
+        Math.ceil((endTime - Date.now()) / 1000)
+      );
+
+      stopTimer();
+
+      if (remainingSeconds <= 0) {
+        finishTimer();
+        return;
+      }
+
+      isPaused = true;
+
+      displayTime(remainingSeconds);
+
+      message.textContent =
+        "⏸️ 일시 정지했어요. 준비되면 이어 하기를 누르세요!";
+
+      updateButtons();
+    });
+
+    // 이어 하기
+    resumeButton.addEventListener("click", function () {
+      if (!isSelected || !isPaused || isFinished) {
+        return;
+      }
+
+      isPaused = false;
+      startTimer();
+    });
+
+    // 초기화
+    resetButton.addEventListener("click", function () {
+      stopTimer();
+
+      remainingSeconds = 0;
+      endTime = 0;
+
+      isSelected = false;
+      isPaused = false;
+      isFinished = false;
+
+      timerDisplay.textContent = "--:--";
+
+      message.textContent =
+        "초기화했어요! 랜덤 시간 뽑기를 눌러 다시 시작하세요.";
+
+      updateButtons();
+    });
+
+    // 첫 화면 버튼 상태 설정
+    updateButtons();
+  </script>
+</body>
+</html>
